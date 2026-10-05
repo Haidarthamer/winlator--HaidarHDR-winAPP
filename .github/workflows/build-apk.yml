@@ -2,42 +2,41 @@ name: Build and Release APK
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  build-release:
-    name: Build and publish APK
+  build:
+    name: Build APK
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Java 17
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
-          cache: gradle
 
       - name: Make Gradle executable
-        run: chmod +x gradlew
+        run: chmod +x ./gradlew
 
       - name: Build debug APK
-        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
-      - name: Prepare release APK
-        run: |
-          mkdir -p release
-          cp app/build/outputs/apk/debug/*.apk release/Winlator-HaidarHDR-debug.apk
-
-      - name: Create GitHub Release
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Winlator HaidarHDR Build ${{ github.run_number }}
+          body: Automatic APK build from commit ${{ github.sha }}
+          files: app/build/outputs/apk/debug/*.apk
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          TAG="build-${GITHUB_RUN_NUMBER}"
-          gh release create "$TAG"             release/Winlator-HaidarHDR-debug.apk             --title "Winlator HaidarHDR Build $GITHUB_RUN_NUMBER"             --notes "Automatic APK build from commit $GITHUB_SHA"             --target "$GITHUB_SHA"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
