@@ -614,7 +614,7 @@ public class SettingsFragment extends Fragment {
             final View child = container.getChildAt(i);
             child.setTag(preferences.getString("gamepad_player"+i, ""));
             final byte slot = (byte)i;
-            child.setOnClickListener((v) -> (new GamepadPlayerConfigDialog(child, slot)).show());
+            child.setOnClickListener(v -> new GamepadPlayerConfigDialog(child, slot).show());
         }
     }
 
