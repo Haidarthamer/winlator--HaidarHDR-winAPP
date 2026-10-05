@@ -43,6 +43,7 @@ import com.winlator.container.Container;
 import com.winlator.container.ContainerManager;
 import com.winlator.inputcontrols.ControlsProfile;
 import com.winlator.inputcontrols.ExternalController;
+import com.winlator.inputcontrols.InputControlsManager;
 import com.winlator.contentdialog.ContentDialog;
 import com.winlator.contentdialog.GamepadPlayerConfigDialog;
 import com.winlator.contentdialog.SoundFontTestDialog;
