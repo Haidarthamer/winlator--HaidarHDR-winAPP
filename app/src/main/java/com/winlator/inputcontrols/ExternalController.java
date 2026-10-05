@@ -158,8 +158,18 @@ public class ExternalController implements GamepadSlot {
     private void processJoystickInput(MotionEvent event, int historyPos) {
         state.thumbLX = getCenteredAxis(event, MotionEvent.AXIS_X, historyPos);
         state.thumbLY = getCenteredAxis(event, MotionEvent.AXIS_Y, historyPos);
+
+        // Android gamepads do not all expose the right stick as Z/RZ.
+        // Bluetooth HID devices commonly use RX/RY instead, so accept both layouts.
         state.thumbRX = getCenteredAxis(event, MotionEvent.AXIS_Z, historyPos);
+        if (state.thumbRX == 0.0f && hasMotionRange(event.getDevice(), MotionEvent.AXIS_RX, event.getSource())) {
+            state.thumbRX = getCenteredAxis(event, MotionEvent.AXIS_RX, historyPos);
+        }
+
         state.thumbRY = getCenteredAxis(event, MotionEvent.AXIS_RZ, historyPos);
+        if (state.thumbRY == 0.0f && hasMotionRange(event.getDevice(), MotionEvent.AXIS_RY, event.getSource())) {
+            state.thumbRY = getCenteredAxis(event, MotionEvent.AXIS_RY, historyPos);
+        }
 
         if (historyPos == -1) {
             float axisX = getCenteredAxis(event, MotionEvent.AXIS_HAT_X, historyPos);
@@ -269,7 +279,8 @@ public class ExternalController implements GamepadSlot {
     }
 
     public static boolean isGameController(InputDevice device) {
-        if (device == null) return false;
+        if (device == null || device.isVirtual()) return false;
+
         String name = device.getName();
         if (name != null) {
             String lowerName = name.toLowerCase();
@@ -277,9 +288,38 @@ public class ExternalController implements GamepadSlot {
                 return false;
             }
         }
+
         int sources = device.getSources();
-        return !device.isVirtual() && ((sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD ||
-               (sources & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK);
+        boolean gamepadSource = (sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD;
+        boolean joystickSource = (sources & InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK;
+        if (!gamepadSource && !joystickSource) return false;
+
+        // Prefer real gamepad buttons when available. Some Bluetooth pads only
+        // advertise joystick axes, so an axis-only HID pad is still accepted.
+        boolean hasButton = false;
+        boolean[] keys = device.hasKeys(
+            KeyEvent.KEYCODE_BUTTON_A,
+            KeyEvent.KEYCODE_BUTTON_B,
+            KeyEvent.KEYCODE_BUTTON_X,
+            KeyEvent.KEYCODE_BUTTON_Y,
+            KeyEvent.KEYCODE_BUTTON_L1,
+            KeyEvent.KEYCODE_BUTTON_R1
+        );
+        for (boolean key : keys) {
+            if (key) {
+                hasButton = true;
+                break;
+            }
+        }
+
+        boolean hasStick = hasMotionRange(device, MotionEvent.AXIS_X, InputDevice.SOURCE_JOYSTICK) &&
+                           hasMotionRange(device, MotionEvent.AXIS_Y, InputDevice.SOURCE_JOYSTICK);
+
+        return hasButton || hasStick;
+    }
+
+    private static boolean hasMotionRange(InputDevice device, int axis, int source) {
+        return device != null && device.getMotionRange(axis, source) != null;
     }
 
     public static float getCenteredAxis(MotionEvent event, int axis, int historyPos) {
