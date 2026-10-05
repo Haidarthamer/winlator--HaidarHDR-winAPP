@@ -14,6 +14,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -40,6 +41,8 @@ import com.winlator.box64.Box64Preset;
 import com.winlator.box64.Box64PresetManager;
 import com.winlator.container.Container;
 import com.winlator.container.ContainerManager;
+import com.winlator.inputcontrols.ControlsProfile;
+import com.winlator.inputcontrols.ExternalController;
 import com.winlator.contentdialog.ContentDialog;
 import com.winlator.contentdialog.GamepadPlayerConfigDialog;
 import com.winlator.contentdialog.SoundFontTestDialog;
@@ -217,6 +220,7 @@ public class SettingsFragment extends Fragment {
         });
 
         loadGamepadPlayerConfigs(view);
+        addExternalControllerMappingButton(view);
 
         if (MainActivity.DEBUG_MODE) {
             view.findViewById(R.id.LLWineInstallation).setVisibility(View.VISIBLE);
@@ -549,6 +553,52 @@ public class SettingsFragment extends Fragment {
         else if (selectedValue.equals("auto") || !AppUtils.setSpinnerSelectionFromValue(sMIDIInputDevice, selectedValue)) {
             sMIDIInputDevice.setSelection(1, false);
         }
+    }
+
+    private void addExternalControllerMappingButton(View view) {
+        LinearLayout container = view.findViewById(R.id.LLGamepadPlayer);
+        if (container == null) return;
+
+        Button button = new Button(requireContext());
+        button.setText("Controllers & Keyboard Mapping");
+        button.setAllCaps(false);
+        button.setOnClickListener(v -> {
+            ArrayList<ControlsProfile> profiles = new InputControlsManager(requireContext()).getProfiles(true);
+            if (profiles.isEmpty()) {
+                AppUtils.showToast(requireContext(), R.string.input_controls);
+                return;
+            }
+
+            ArrayList<String> profileNames = new ArrayList<>();
+            for (ControlsProfile profile : profiles) profileNames.add(profile.getName());
+
+            ContentDialog.showSelectionList(requireContext(), R.string.input_controls,
+                profileNames.toArray(new String[0]), false, selectedProfiles -> {
+                    if (selectedProfiles.length == 0) return;
+
+                    ControlsProfile selectedProfile = profiles.get(selectedProfiles[0]);
+                    ArrayList<ExternalController> controllers = ExternalController.getControllers();
+                    if (controllers.isEmpty()) {
+                        AppUtils.showToast(requireContext(), R.string.input_controls);
+                        return;
+                    }
+
+                    ArrayList<String> controllerNames = new ArrayList<>();
+                    for (ExternalController controller : controllers) controllerNames.add(controller.getName());
+
+                    ContentDialog.showSelectionList(requireContext(), R.string.input_controls,
+                        controllerNames.toArray(new String[0]), false, selectedControllers -> {
+                            if (selectedControllers.length == 0) return;
+
+                            ExternalController controller = controllers.get(selectedControllers[0]);
+                            Intent intent = new Intent(requireContext(), ExternalControllerBindingsActivity.class);
+                            intent.putExtra("profile_id", selectedProfile.id);
+                            intent.putExtra("controller_id", controller.getId());
+                            startActivity(intent);
+                        });
+                });
+
+        container.addView(button, 0);
     }
 
     private void loadGamepadPlayerConfigs(View view) {
