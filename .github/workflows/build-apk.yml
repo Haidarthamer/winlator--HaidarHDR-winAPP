@@ -1,4 +1,4 @@
-name: Build APK
+name: Build and Release APK
 
 on:
   push:
@@ -6,11 +6,11 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  build:
-    name: Build debug APK
+  build-release:
+    name: Build and publish APK
     runs-on: ubuntu-latest
 
     steps:
@@ -30,10 +30,14 @@ jobs:
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Winlator-HaidarHDR-debug
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
-          retention-days: 14
+      - name: Prepare release APK
+        run: |
+          mkdir -p release
+          cp app/build/outputs/apk/debug/*.apk release/Winlator-HaidarHDR-debug.apk
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="build-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG"             release/Winlator-HaidarHDR-debug.apk             --title "Winlator HaidarHDR Build $GITHUB_RUN_NUMBER"             --notes "Automatic APK build from commit $GITHUB_SHA"             --target "$GITHUB_SHA"
