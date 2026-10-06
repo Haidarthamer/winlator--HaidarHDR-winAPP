@@ -169,8 +169,8 @@ public class SteamFragment extends Fragment {
         refresh.setOnClickListener(v -> refreshSteamState());
         launchSteam.setOnClickListener(v -> launchSteamClient());
         switchAccount.setOnClickListener(v -> launchSteamClient());
-        regionButton.setOnClickListener(v -> launchSteamClient());
-        openSteamSettings.setOnClickListener(v -> launchSteamClient());
+        regionButton.setOnClickListener(v -> launchSteamSettings());
+        openSteamSettings.setOnClickListener(v -> launchSteamSettings());
         applySpeed.setOnClickListener(v -> applySteamSettings());
         applyGameplay.setOnClickListener(v -> applySteamSettings());
         install.setOnClickListener(v -> chooseSteamInstaller());
@@ -211,7 +211,7 @@ public class SteamFragment extends Fragment {
         installState.setText(installed
             ? "Steam detected: " + steamExe.getPath()
             : "Steam is not installed in this container.");
-        accountState.setText(installed ? "Steam is ready. Login and account switching use the real Steam client." : "Install SteamSetup.exe into this container.");
+        accountState.setText(installed ? getAccountSummary(selectedContainer, steamDir) : "Install SteamSetup.exe into this container.");
         renderGames(installed ? discoverGames(selectedContainer, steamDir) : new ArrayList<>());
     }
 
@@ -251,6 +251,17 @@ public class SteamFragment extends Fragment {
             return;
         }
         launchViaWinlator(steamExe, "");
+    }
+
+    private void launchSteamSettings() {
+        if (selectedContainer == null) return;
+        steamExe = findSteamExe(selectedContainer);
+        if (steamExe == null) {
+            Toast.makeText(requireContext(), "Install Steam first.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        // Uses Steam's real URL protocol to open its own settings window.
+        launchViaWinlator(steamExe, "steam://open/settings");
     }
 
     private void launchSteamGame(String appId) {
@@ -368,6 +379,17 @@ public class SteamFragment extends Fragment {
         };
         for (File f : candidates) if (f.isFile()) return f;
         return null;
+    }
+
+    private String getAccountSummary(Container c, File steamInstallDir) {
+        File loginUsers = new File(steamInstallDir, "config/loginusers.vdf");
+        if (!loginUsers.isFile()) return "Steam is ready. Login and account switching use the real Steam client.";
+        String body = FileUtils.readString(loginUsers);
+        Matcher m = Pattern.compile("\"PersonaName\"\\s+\"([^\"]+)\"").matcher(body);
+        ArrayList<String> names = new ArrayList<>();
+        while (m.find() && names.size() < 4) names.add(m.group(1));
+        if (names.isEmpty()) return "Steam is ready. Login and account switching use the real Steam client.";
+        return "Accounts detected: " + String.join(", ", names);
     }
 
     private ArrayList<GameInfo> discoverGames(Container c, File steamInstallDir) {
