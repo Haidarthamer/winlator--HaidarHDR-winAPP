@@ -295,7 +295,9 @@ public class SteamFragment extends Fragment {
         try {
             File launcherDir = new File(selectedContainer.getRootDir(), ".winlator-steam");
             if (!launcherDir.exists()) launcherDir.mkdirs();
-            File installer = new File(launcherDir, "SteamSetup.exe");
+            File installerDir = new File(selectedContainer.getRootDir(), ".wine/drive_c/Temp");
+            if (!installerDir.exists()) installerDir.mkdirs();
+            File installer = new File(installerDir, "SteamSetup.exe");
 
             try (InputStream in = requireContext().getContentResolver().openInputStream(uri);
                  OutputStream out = new FileOutputStream(installer)) {
